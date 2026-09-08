@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Compras · Obras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- TELA DE LOGIN -->
+  <div id="tela-login" class="tela-login">
+    <div class="login-card">
+      <div class="login-marca">
+        <span class="login-marca-icone">▣</span>
+        <span class="login-marca-texto">Compras<strong>Obra</strong></span>
+      </div>
+      <p class="login-subtitulo">Gestão de solicitações, cotações e negociações</p>
+
+      <form id="form-login">
+        <label for="campo-login">Usuário</label>
+        <input type="text" id="campo-login" autocomplete="username" required>
+
+        <label for="campo-senha">Senha</label>
+        <input type="password" id="campo-senha" autocomplete="current-password" required>
+
+        <button type="submit" id="botao-login">Entrar</button>
+        <p id="login-erro" class="login-erro" hidden></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- APLICAÇÃO (visível após login) -->
+  <div id="app" class="app" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-marca">
+        <span class="login-marca-icone">▣</span>
+        <span class="login-marca-texto">Compras<strong>Obra</strong></span>
+      </div>
+      <nav id="menu-lateral" class="menu-lateral"></nav>
+    </aside>
+
+    <div class="conteudo">
+      <header class="topbar">
+        <h1 id="titulo-pagina">Início</h1>
+        <div class="usuario-logado">
+          <span id="usuario-nome">—</span>
+          <span id="usuario-perfil" class="usuario-perfil"></span>
+          <button id="botao-sair" class="botao-sair" title="Sair">Sair</button>
+        </div>
+      </header>
+
+      <main class="pagina-conteudo">
+        <section id="pagina-inicio" class="secao-pagina">
+          <p class="boas-vindas">Bem-vindo(a) de volta. Aqui vai o resumo do que precisa da sua atenção hoje.</p>
+          <div class="cartoes-resumo">
+            <div class="cartao">
+              <span class="cartao-numero">—</span>
+              <span class="cartao-legenda">Aguardando aprovação</span>
+            </div>
+            <div class="cartao">
+              <span class="cartao-numero">—</span>
+              <span class="cartao-legenda">Cotações vencendo</span>
+            </div>
+            <div class="cartao">
+              <span class="cartao-numero">—</span>
+              <span class="cartao-legenda">Negociações paradas</span>
+            </div>
+            <div class="cartao">
+              <span class="cartao-numero">—</span>
+              <span class="cartao-legenda">Projetos ativos</span>
+            </div>
+          </div>
+          <p class="nota-etapa">Os números acima serão conectados aos dados reais na Etapa 8 (Dashboard). As demais páginas do menu serão construídas nas próximas etapas.</p>
+        </section>
+
+        <section id="pagina-generica" class="secao-pagina" hidden>
+          <p class="nota-etapa" id="texto-pagina-generica"></p>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
