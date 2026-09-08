@@ -1,3 +1,8 @@
+// O token de sessão fica só nesta variável, em memória.
+// Ele NUNCA é salvo em localStorage/sessionStorage/cookie de propósito:
+// assim, todo carregamento (ou recarregamento) da página exige login de novo.
+let sessaoToken = null;
+
 const telaLogin = document.getElementById("tela-login");
 const app = document.getElementById("app");
 const formLogin = document.getElementById("form-login");
@@ -26,6 +31,13 @@ function mostrarErroLogin(mensagem) {
   loginErro.hidden = false;
 }
 
+function voltarParaLogin() {
+  sessaoToken = null;
+  app.hidden = true;
+  telaLogin.hidden = false;
+  formLogin.reset();
+}
+
 formLogin.addEventListener("submit", async (evento) => {
   evento.preventDefault();
   loginErro.hidden = true;
@@ -41,10 +53,14 @@ formLogin.addEventListener("submit", async (evento) => {
       mostrarErroLogin(resultado.erro || "Não foi possível entrar.");
       return;
     }
-    localStorage.setItem("token", resultado.token);
-    localStorage.setItem("nome", resultado.nome);
-    localStorage.setItem("perfil", resultado.perfil);
-    await entrarNoApp();
+
+    sessaoToken = resultado.token;
+    usuarioNome.textContent = resultado.nome;
+    usuarioPerfil.textContent = resultado.perfil;
+    await carregarMenu();
+
+    telaLogin.hidden = true;
+    app.hidden = false;
   } catch (erro) {
     mostrarErroLogin("Não foi possível conectar ao sistema. Verifique sua internet e tente novamente.");
   } finally {
@@ -54,11 +70,8 @@ formLogin.addEventListener("submit", async (evento) => {
 });
 
 document.getElementById("botao-sair").addEventListener("click", async () => {
-  const token = localStorage.getItem("token");
-  localStorage.clear();
-  try { await chamarApi({ action: "logout", token }); } catch (e) {}
-  app.hidden = true;
-  telaLogin.hidden = false;
+  try { await chamarApi({ action: "logout", token: sessaoToken }); } catch (e) {}
+  voltarParaLogin();
 });
 
 function selecionarPagina(nomePagina) {
@@ -89,34 +102,16 @@ function montarMenu(itensMenu) {
   selecionarPagina("Início");
 }
 
-async function entrarNoApp() {
-  const token = localStorage.getItem("token");
-  const resultado = await chamarApi({ action: "getMenu", token });
-
+async function carregarMenu() {
+  const resultado = await chamarApi({ action: "getMenu", token: sessaoToken });
   if (!resultado.ok) {
-    localStorage.clear();
-    telaLogin.hidden = false;
-    app.hidden = true;
     mostrarErroLogin("Sua sessão expirou. Faça login novamente.");
+    voltarParaLogin();
     return;
   }
-
-  usuarioNome.textContent = resultado.nome;
-  usuarioPerfil.textContent = resultado.perfil;
   montarMenu(resultado.menu);
-
-  telaLogin.hidden = true;
-  app.hidden = false;
 }
 
-// Ao carregar a página, tenta reaproveitar uma sessão já existente.
-(function iniciar() {
-  if (APP_URL.indexOf("COLE_AQUI") !== -1) {
-    mostrarErroLogin("Configuração pendente: cole a URL do Apps Script em config.js.");
-    return;
-  }
-  const token = localStorage.getItem("token");
-  if (token) {
-    entrarNoApp();
-  }
-})();
+if (APP_URL.indexOf("COLE_AQUI") !== -1) {
+  mostrarErroLogin("Configuração pendente: cole a URL do Apps Script em config.js.");
+}
