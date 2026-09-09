@@ -8,6 +8,7 @@ const app = document.getElementById("app");
 const formLogin = document.getElementById("form-login");
 const botaoLogin = document.getElementById("botao-login");
 const loginErro = document.getElementById("login-erro");
+const loginSucesso = document.getElementById("login-sucesso");
 const menuLateral = document.getElementById("menu-lateral");
 const usuarioNome = document.getElementById("usuario-nome");
 const usuarioPerfil = document.getElementById("usuario-perfil");
@@ -41,6 +42,7 @@ function voltarParaLogin() {
 formLogin.addEventListener("submit", async (evento) => {
   evento.preventDefault();
   loginErro.hidden = true;
+  loginSucesso.hidden = true;
   botaoLogin.disabled = true;
   botaoLogin.textContent = "Entrando...";
 
@@ -59,8 +61,12 @@ formLogin.addEventListener("submit", async (evento) => {
     usuarioPerfil.textContent = resultado.perfil;
     await carregarMenu();
 
+    loginSucesso.hidden = false;
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
     telaLogin.hidden = true;
     app.hidden = false;
+    loginSucesso.hidden = true;
   } catch (erro) {
     mostrarErroLogin("Não foi possível conectar ao sistema. Verifique sua internet e tente novamente.");
   } finally {
