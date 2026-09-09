@@ -243,7 +243,115 @@ body {
   padding: 12px 14px;
 }
 
+.config-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.config-titulo { margin: 0 0 4px; font-size: 17px; color: var(--navy); }
+.config-subtitulo { margin: 0; font-size: 12.5px; color: var(--gray-text); }
+
+.botao-primario {
+  background: var(--navy);
+  color: var(--white);
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.botao-primario:hover { background: #2A3B5F; }
+
+.botao-secundario {
+  background: var(--white);
+  color: var(--gray-text);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.form-usuario {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.form-usuario h3 { margin: 0 0 14px; font-size: 15px; color: var(--navy); }
+
+.form-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.campo { display: flex; flex-direction: column; margin-bottom: 12px; }
+.campo label { font-size: 12.5px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
+.campo input, .campo select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.form-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+.tabela-usuarios {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+
+.tabela-usuarios th {
+  text-align: left;
+  background: var(--concrete);
+  color: var(--navy);
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.tabela-usuarios td { padding: 10px 14px; border-top: 1px solid var(--border); }
+
+.badge-situacao {
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.badge-situacao.ativo { background: #E8F5E9; color: #2E7D32; }
+.badge-situacao.inativo { background: #FBEAE8; color: var(--danger); }
+
+.acoes-tabela { display: flex; gap: 8px; justify-content: flex-end; }
+.link-acao {
+  background: none;
+  border: none;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.link-acao.perigo { color: var(--danger); }
+
 @media (max-width: 720px) {
+  .form-linha { grid-template-columns: 1fr; }
+
   .app { flex-direction: column; }
   .sidebar { width: 100%; }
   .menu-lateral { flex-direction: row; overflow-x: auto; }
