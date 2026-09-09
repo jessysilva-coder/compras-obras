@@ -1,256 +1,382 @@
-// O token de sessão fica só nesta variável, em memória.
-// Ele NUNCA é salvo em localStorage/sessionStorage/cookie de propósito:
-// assim, todo carregamento (ou recarregamento) da página exige login de novo.
-let sessaoToken = null;
-
-const telaLogin = document.getElementById("tela-login");
-const app = document.getElementById("app");
-const formLogin = document.getElementById("form-login");
-const botaoLogin = document.getElementById("botao-login");
-const loginErro = document.getElementById("login-erro");
-const loginSucesso = document.getElementById("login-sucesso");
-const botaoVerSenha = document.getElementById("botao-ver-senha");
-const campoSenha = document.getElementById("campo-senha");
-
-botaoVerSenha.addEventListener("click", () => {
-  const vaiMostrar = campoSenha.type === "password";
-  campoSenha.type = vaiMostrar ? "text" : "password";
-  botaoVerSenha.textContent = vaiMostrar ? "🙈" : "👁";
-  botaoVerSenha.classList.toggle("ativo", vaiMostrar);
-  botaoVerSenha.setAttribute("aria-pressed", String(vaiMostrar));
-  botaoVerSenha.setAttribute("aria-label", vaiMostrar ? "Ocultar senha" : "Mostrar senha");
-});
-const menuLateral = document.getElementById("menu-lateral");
-const usuarioNome = document.getElementById("usuario-nome");
-const usuarioPerfil = document.getElementById("usuario-perfil");
-const tituloPagina = document.getElementById("titulo-pagina");
-const paginaInicio = document.getElementById("pagina-inicio");
-const paginaGenerica = document.getElementById("pagina-generica");
-const textoPaginaGenerica = document.getElementById("texto-pagina-generica");
-const paginaConfiguracoes = document.getElementById("pagina-configuracoes");
-const tabelaUsuariosCorpo = document.getElementById("tabela-usuarios-corpo");
-const formUsuario = document.getElementById("form-usuario");
-const formUsuarioTitulo = document.getElementById("form-usuario-titulo");
-const botaoNovoUsuario = document.getElementById("botao-novo-usuario");
-const botaoCancelarUsuario = document.getElementById("botao-cancelar-usuario");
-const usuarioFormErro = document.getElementById("usuario-form-erro");
-let idUsuarioEmEdicao = null;
-
-async function chamarApi(payload) {
-  const resposta = await fetch(APP_URL, {
-    method: "POST",
-    // text/plain evita o preflight de CORS no Apps Script.
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  });
-  return resposta.json();
+:root {
+  --navy: #1F2A44;
+  --navy-dark: #16203570;
+  --concrete: #EFEDE8;
+  --amber: #E8A33D;
+  --amber-dark: #C9862A;
+  --white: #FFFFFF;
+  --gray-text: #5B6472;
+  --border: #DEDBD3;
+  --danger: #C0453A;
 }
 
-function mostrarErroLogin(mensagem) {
-  loginErro.textContent = mensagem;
-  loginErro.hidden = false;
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: #1B2130;
+  background: var(--concrete);
 }
 
-function voltarParaLogin() {
-  sessaoToken = null;
-  app.hidden = true;
-  telaLogin.hidden = false;
-  formLogin.reset();
+/* ---------- LOGIN ---------- */
+.tela-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(180deg, rgba(31,42,68,.96), rgba(31,42,68,.96)),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,.04) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,.04) 40px);
+  padding: 20px;
 }
 
-formLogin.addEventListener("submit", async (evento) => {
-  evento.preventDefault();
-  loginErro.hidden = true;
-  loginSucesso.hidden = true;
-  botaoLogin.disabled = true;
-  botaoLogin.textContent = "Entrando...";
-
-  const login = document.getElementById("campo-login").value.trim();
-  const senha = document.getElementById("campo-senha").value;
-
-  try {
-    const resultado = await chamarApi({ action: "login", login, senha });
-    if (!resultado.ok) {
-      mostrarErroLogin(resultado.erro || "Não foi possível entrar.");
-      return;
-    }
-
-    sessaoToken = resultado.token;
-    usuarioNome.textContent = resultado.nome;
-    usuarioPerfil.textContent = resultado.perfil;
-    await carregarMenu();
-
-    loginSucesso.hidden = false;
-    await new Promise((resolve) => setTimeout(resolve, 900));
-
-    telaLogin.hidden = true;
-    app.hidden = false;
-    loginSucesso.hidden = true;
-  } catch (erro) {
-    mostrarErroLogin("Não foi possível conectar ao sistema. Verifique sua internet e tente novamente.");
-  } finally {
-    botaoLogin.disabled = false;
-    botaoLogin.textContent = "Entrar";
-  }
-});
-
-document.getElementById("botao-sair").addEventListener("click", async () => {
-  try { await chamarApi({ action: "logout", token: sessaoToken }); } catch (e) {}
-  voltarParaLogin();
-});
-
-function selecionarPagina(nomePagina) {
-  tituloPagina.textContent = nomePagina;
-  document.querySelectorAll(".item-menu").forEach((el) => {
-    el.classList.toggle("ativo", el.textContent === nomePagina);
-  });
-
-  paginaInicio.hidden = true;
-  paginaGenerica.hidden = true;
-  paginaConfiguracoes.hidden = true;
-
-  if (nomePagina === "Início") {
-    paginaInicio.hidden = false;
-  } else if (nomePagina === "Configurações") {
-    paginaConfiguracoes.hidden = false;
-    carregarUsuarios();
-  } else {
-    paginaGenerica.hidden = false;
-    textoPaginaGenerica.textContent = `A página "${nomePagina}" será construída em uma das próximas etapas.`;
-  }
+.login-card {
+  background: var(--white);
+  border-radius: 6px;
+  padding: 40px 36px 32px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
 }
 
-function montarMenu(itensMenu) {
-  menuLateral.innerHTML = "";
-  itensMenu.forEach((item) => {
-    const el = document.createElement("div");
-    el.className = "item-menu";
-    el.textContent = item;
-    el.addEventListener("click", () => selecionarPagina(item));
-    menuLateral.appendChild(el);
-  });
-  selecionarPagina("Início");
+.login-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  color: var(--navy);
+  font-weight: 600;
 }
 
-async function carregarMenu() {
-  const resultado = await chamarApi({ action: "getMenu", token: sessaoToken });
-  if (!resultado.ok) {
-    mostrarErroLogin("Sua sessão expirou. Faça login novamente.");
-    voltarParaLogin();
-    return;
-  }
-  montarMenu(resultado.menu);
+.login-marca-icone {
+  color: var(--amber);
+  font-size: 22px;
+  line-height: 1;
 }
 
-if (APP_URL.indexOf("COLE_AQUI") !== -1) {
-  mostrarErroLogin("Configuração pendente: cole a URL do Apps Script em config.js.");
+.login-marca-texto strong { font-weight: 700; }
+
+.login-subtitulo {
+  color: var(--gray-text);
+  font-size: 13.5px;
+  margin: 6px 0 28px;
 }
 
-// ---------- Configurações > Cadastro de Usuários ----------
-
-function abrirFormUsuario(usuario) {
-  usuarioFormErro.hidden = true;
-  if (usuario) {
-    idUsuarioEmEdicao = usuario.idUsuario;
-    formUsuarioTitulo.textContent = `Editar usuário — ${usuario.nome}`;
-    document.getElementById("usr-nome").value = usuario.nome;
-    document.getElementById("usr-login").value = usuario.login;
-    document.getElementById("usr-perfil").value = usuario.perfil;
-    document.getElementById("usr-senha").value = "";
-  } else {
-    idUsuarioEmEdicao = null;
-    formUsuarioTitulo.textContent = "Novo usuário";
-    formUsuario.reset();
-  }
-  formUsuario.hidden = false;
+#form-login label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 16px 0 6px;
 }
 
-botaoNovoUsuario.addEventListener("click", () => abrirFormUsuario(null));
-botaoCancelarUsuario.addEventListener("click", () => { formUsuario.hidden = true; });
-
-formUsuario.addEventListener("submit", async (evento) => {
-  evento.preventDefault();
-  usuarioFormErro.hidden = true;
-
-  const dados = {
-    nome: document.getElementById("usr-nome").value.trim(),
-    login: document.getElementById("usr-login").value.trim(),
-    senha: document.getElementById("usr-senha").value,
-    perfil: document.getElementById("usr-perfil").value
-  };
-
-  try {
-    let resultado;
-    if (idUsuarioEmEdicao) {
-      resultado = await chamarApi({ action: "atualizarUsuario", token: sessaoToken, dados: { ...dados, idUsuario: idUsuarioEmEdicao } });
-    } else {
-      resultado = await chamarApi({ action: "criarUsuario", token: sessaoToken, dados });
-    }
-
-    if (!resultado.ok) {
-      usuarioFormErro.textContent = resultado.erro;
-      usuarioFormErro.hidden = false;
-      return;
-    }
-
-    formUsuario.hidden = true;
-    carregarUsuarios();
-  } catch (erro) {
-    usuarioFormErro.textContent = "Não foi possível salvar. Tente novamente.";
-    usuarioFormErro.hidden = false;
-  }
-});
-
-async function alternarSituacao(usuario) {
-  const novaSituacao = usuario.situacao === "Ativo" ? "Inativo" : "Ativo";
-  const confirmacao = confirm(`Confirma alterar "${usuario.nome}" para ${novaSituacao}?`);
-  if (!confirmacao) return;
-
-  const resultado = await chamarApi({
-    action: "alterarSituacaoUsuario",
-    token: sessaoToken,
-    dados: { idUsuario: usuario.idUsuario, novaSituacao }
-  });
-
-  if (!resultado.ok) {
-    alert(resultado.erro);
-    return;
-  }
-  carregarUsuarios();
+#form-login input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
 }
 
-async function carregarUsuarios() {
-  tabelaUsuariosCorpo.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
+#form-login input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232,163,61,.25);
+}
 
-  const resultado = await chamarApi({ action: "listarUsuarios", token: sessaoToken });
-  if (!resultado.ok) {
-    tabelaUsuariosCorpo.innerHTML = `<tr><td colspan="5">${resultado.erro}</td></tr>`;
-    return;
-  }
+.campo-senha-wrapper { position: relative; }
 
-  tabelaUsuariosCorpo.innerHTML = "";
-  resultado.usuarios.forEach((usuario) => {
-    const linha = document.createElement("tr");
+.campo-senha-wrapper input { padding-right: 40px; }
 
-    const classeBadge = usuario.situacao === "Ativo" ? "ativo" : "inativo";
-    const textoAlternar = usuario.situacao === "Ativo" ? "Desativar" : "Ativar";
+.botao-ver-senha {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px 8px;
+  color: var(--gray-text);
+  line-height: 1;
+  opacity: .55;
+}
 
-    linha.innerHTML = `
-      <td>${usuario.nome}</td>
-      <td>${usuario.login}</td>
-      <td>${usuario.perfil}</td>
-      <td><span class="badge-situacao ${classeBadge}">${usuario.situacao}</span></td>
-      <td>
-        <div class="acoes-tabela">
-          <button class="link-acao" data-acao="editar">Editar</button>
-          <button class="link-acao perigo" data-acao="alternar">${textoAlternar}</button>
-        </div>
-      </td>
-    `;
+.botao-ver-senha:hover { opacity: .9; }
+.botao-ver-senha.ativo { opacity: 1; color: var(--navy); }
 
-    linha.querySelector('[data-acao="editar"]').addEventListener("click", () => abrirFormUsuario(usuario));
-    linha.querySelector('[data-acao="alternar"]').addEventListener("click", () => alternarSituacao(usuario));
+#botao-login {
+  width: 100%;
+  margin-top: 24px;
+  padding: 12px;
+  background: var(--amber);
+  color: var(--navy);
+  border: none;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
 
-    tabelaUsuariosCorpo.appendChild(linha);
-  });
+#botao-login:hover { background: var(--amber-dark); }
+#botao-login:disabled { opacity: .6; cursor: default; }
+
+.login-erro {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #FBEAE8;
+  color: var(--danger);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* Garante que [hidden] sempre vença, mesmo com display:flex definido abaixo. */
+[hidden] { display: none !important; }
+
+.login-sucesso {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- APP SHELL ---------- */
+.app { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 236px;
+  flex-shrink: 0;
+  background: var(--navy);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0;
+}
+
+.sidebar-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  padding: 0 22px 22px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  margin-bottom: 10px;
+}
+
+.menu-lateral { display: flex; flex-direction: column; }
+
+.item-menu {
+  padding: 12px 22px;
+  color: rgba(255,255,255,.78);
+  font-size: 14px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .12s ease;
+}
+
+.item-menu:hover { background: rgba(255,255,255,.06); color: var(--white); }
+
+.item-menu.ativo {
+  background: rgba(255,255,255,.08);
+  border-left-color: var(--amber);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.conteudo { flex: 1; min-width: 0; }
+
+.topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar h1 { font-size: 19px; margin: 0; color: var(--navy); }
+
+.usuario-logado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.usuario-perfil {
+  background: var(--concrete);
+  color: var(--navy);
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.botao-sair {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--gray-text);
+}
+
+.botao-sair:hover { border-color: var(--danger); color: var(--danger); }
+
+.pagina-conteudo { padding: 28px 32px; }
+
+.boas-vindas { color: var(--gray-text); margin: 0 0 20px; }
+
+.cartoes-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.cartao {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cartao-numero { font-size: 28px; font-weight: 700; color: var(--navy); }
+.cartao-legenda { font-size: 13px; color: var(--gray-text); }
+
+.nota-etapa {
+  font-size: 13px;
+  color: var(--gray-text);
+  background: #F6F4EF;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+
+.config-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.config-titulo { margin: 0 0 4px; font-size: 17px; color: var(--navy); }
+.config-subtitulo { margin: 0; font-size: 12.5px; color: var(--gray-text); }
+
+.botao-primario {
+  background: var(--navy);
+  color: var(--white);
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.botao-primario:hover { background: #2A3B5F; }
+
+.botao-secundario {
+  background: var(--white);
+  color: var(--gray-text);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.form-usuario {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.form-usuario h3 { margin: 0 0 14px; font-size: 15px; color: var(--navy); }
+
+.form-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.campo { display: flex; flex-direction: column; margin-bottom: 12px; }
+.campo label { font-size: 12.5px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
+.campo input, .campo select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.form-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+.tabela-usuarios {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+
+.tabela-usuarios th {
+  text-align: left;
+  background: var(--concrete);
+  color: var(--navy);
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.tabela-usuarios td { padding: 10px 14px; border-top: 1px solid var(--border); }
+
+.badge-situacao {
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.badge-situacao.ativo { background: #E8F5E9; color: #2E7D32; }
+.badge-situacao.inativo { background: #FBEAE8; color: var(--danger); }
+
+.acoes-tabela { display: flex; gap: 8px; justify-content: flex-end; }
+.link-acao {
+  background: none;
+  border: none;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.link-acao.perigo { color: var(--danger); }
+
+@media (max-width: 720px) {
+  .form-linha { grid-template-columns: 1fr; }
+
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; }
+  .menu-lateral { flex-direction: row; overflow-x: auto; }
+  .item-menu { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .item-menu.ativo { border-left-color: transparent; border-bottom-color: var(--amber); }
 }
