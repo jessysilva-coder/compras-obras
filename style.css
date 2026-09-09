@@ -113,6 +113,19 @@ body {
   font-size: 13px;
 }
 
+/* Garante que [hidden] sempre vença, mesmo com display:flex definido abaixo. */
+[hidden] { display: none !important; }
+
+.login-sucesso {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* ---------- APP SHELL ---------- */
 .app { display: flex; min-height: 100vh; }
 
