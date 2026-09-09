@@ -80,6 +80,57 @@
         <section id="pagina-generica" class="secao-pagina" hidden>
           <p class="nota-etapa" id="texto-pagina-generica"></p>
         </section>
+
+        <section id="pagina-configuracoes" class="secao-pagina" hidden>
+          <div class="config-cabecalho">
+            <div>
+              <h2 class="config-titulo">Cadastro de Usuários</h2>
+              <p class="config-subtitulo">Visível apenas para o perfil Administrador.</p>
+            </div>
+            <button id="botao-novo-usuario" class="botao-primario">+ Novo usuário</button>
+          </div>
+
+          <form id="form-usuario" class="form-usuario" hidden>
+            <h3 id="form-usuario-titulo">Novo usuário</h3>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="usr-nome">Nome</label>
+                <input type="text" id="usr-nome" required>
+              </div>
+              <div class="campo">
+                <label for="usr-login">Login (e-mail)</label>
+                <input type="text" id="usr-login" required>
+              </div>
+            </div>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="usr-senha">Senha</label>
+                <input type="password" id="usr-senha" placeholder="Deixe em branco para manter a atual">
+              </div>
+              <div class="campo">
+                <label for="usr-perfil">Perfil</label>
+                <select id="usr-perfil">
+                  <option>Administrador</option>
+                  <option>Compras</option>
+                  <option>Engenheiro</option>
+                  <option>Financeiro</option>
+                </select>
+              </div>
+            </div>
+            <p id="usuario-form-erro" class="login-erro" hidden></p>
+            <div class="form-acoes">
+              <button type="button" id="botao-cancelar-usuario" class="botao-secundario">Cancelar</button>
+              <button type="submit" id="botao-salvar-usuario" class="botao-primario">Salvar</button>
+            </div>
+          </form>
+
+          <table class="tabela-usuarios">
+            <thead>
+              <tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Situação</th><th></th></tr>
+            </thead>
+            <tbody id="tabela-usuarios-corpo"></tbody>
+          </table>
+        </section>
       </main>
     </div>
   </div>
