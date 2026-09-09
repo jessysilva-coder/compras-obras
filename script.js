@@ -9,6 +9,17 @@ const formLogin = document.getElementById("form-login");
 const botaoLogin = document.getElementById("botao-login");
 const loginErro = document.getElementById("login-erro");
 const loginSucesso = document.getElementById("login-sucesso");
+const botaoVerSenha = document.getElementById("botao-ver-senha");
+const campoSenha = document.getElementById("campo-senha");
+
+botaoVerSenha.addEventListener("click", () => {
+  const vaiMostrar = campoSenha.type === "password";
+  campoSenha.type = vaiMostrar ? "text" : "password";
+  botaoVerSenha.textContent = vaiMostrar ? "🙈" : "👁";
+  botaoVerSenha.classList.toggle("ativo", vaiMostrar);
+  botaoVerSenha.setAttribute("aria-pressed", String(vaiMostrar));
+  botaoVerSenha.setAttribute("aria-label", vaiMostrar ? "Ocultar senha" : "Mostrar senha");
+});
 const menuLateral = document.getElementById("menu-lateral");
 const usuarioNome = document.getElementById("usuario-nome");
 const usuarioPerfil = document.getElementById("usuario-perfil");
