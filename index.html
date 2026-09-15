@@ -134,6 +134,91 @@
             <tbody id="tabela-usuarios-corpo"></tbody>
           </table>
         </section>
+
+        <section id="pagina-projetos" class="secao-pagina" hidden>
+          <div class="config-cabecalho">
+            <div>
+              <h2 class="config-titulo">Cadastro de Projetos</h2>
+              <p class="config-subtitulo">Toda solicitação e cotação estará ligada a um destes projetos.</p>
+            </div>
+            <button id="botao-novo-projeto" class="botao-primario">+ Novo projeto</button>
+          </div>
+
+          <form id="form-projeto" class="form-usuario" hidden>
+            <h3 id="form-projeto-titulo">Novo projeto</h3>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="prj-nome">Nome do projeto</label>
+                <input type="text" id="prj-nome" required>
+              </div>
+              <div class="campo">
+                <label for="prj-codigo">Código interno</label>
+                <input type="text" id="prj-codigo" placeholder="Opcional">
+              </div>
+            </div>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="prj-cliente">Cliente</label>
+                <input type="text" id="prj-cliente" required>
+              </div>
+              <div class="campo">
+                <label for="prj-endereco">Endereço / localização</label>
+                <input type="text" id="prj-endereco">
+              </div>
+            </div>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="prj-engenheiro">Engenheiro responsável</label>
+                <select id="prj-engenheiro"><option value="">— Selecione —</option></select>
+              </div>
+              <div class="campo">
+                <label for="prj-responsavel-compras">Responsável de compras</label>
+                <select id="prj-responsavel-compras"><option value="">— Selecione —</option></select>
+              </div>
+            </div>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="prj-data-inicio">Data de início</label>
+                <input type="date" id="prj-data-inicio">
+              </div>
+              <div class="campo">
+                <label for="prj-previsao-termino">Previsão de término</label>
+                <input type="date" id="prj-previsao-termino">
+              </div>
+            </div>
+            <div class="form-linha">
+              <div class="campo">
+                <label for="prj-orcamento">Orçamento total (R$)</label>
+                <input type="number" id="prj-orcamento" step="0.01" min="0">
+              </div>
+              <div class="campo">
+                <label for="prj-status">Status</label>
+                <select id="prj-status">
+                  <option>Em andamento</option>
+                  <option>Pausado</option>
+                  <option>Concluído</option>
+                  <option>Cancelado</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="prj-observacoes">Observações</label>
+              <textarea id="prj-observacoes" rows="2"></textarea>
+            </div>
+            <p id="projeto-form-erro" class="login-erro" hidden></p>
+            <div class="form-acoes">
+              <button type="button" id="botao-cancelar-projeto" class="botao-secundario">Cancelar</button>
+              <button type="submit" id="botao-salvar-projeto" class="botao-primario">Salvar</button>
+            </div>
+          </form>
+
+          <table class="tabela-usuarios">
+            <thead>
+              <tr><th>Projeto</th><th>Cliente</th><th>Responsável compras</th><th>Orçamento</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="tabela-projetos-corpo"></tbody>
+          </table>
+        </section>
       </main>
     </div>
   </div>
