@@ -381,8 +381,87 @@ body {
 }
 .link-acao.perigo { color: var(--danger); }
 
+.colunas-responsaveis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.bloco-responsavel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.bloco-responsavel h3 { margin: 0 0 12px; font-size: 14px; color: var(--navy); }
+
+.form-inline-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.form-inline-add input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.lista-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.lista-chips li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  background: var(--concrete);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.lista-chips li.item-inativo { opacity: .55; text-decoration: line-through; }
+
+.indicador-fila {
+  font-size: 12px;
+  color: var(--gray-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.indicador-fila::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pulsar 1s ease-in-out infinite;
+}
+@keyframes pulsar {
+  0%, 100% { opacity: .3; }
+  50% { opacity: 1; }
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999;
+}
+.toast {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--white);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  max-width: 320px;
+}
+.toast-sucesso { background: #2E7D32; }
+.toast-erro { background: var(--danger); }
+.toast-info { background: var(--navy); }
+
 @media (max-width: 720px) {
   .form-linha { grid-template-columns: 1fr; }
+  .colunas-responsaveis { grid-template-columns: 1fr; }
 
   .app { flex-direction: column; }
   .sidebar { width: 100%; }
@@ -435,6 +514,7 @@ body {
       <header class="topbar">
         <h1 id="titulo-pagina">Início</h1>
         <div class="usuario-logado">
+          <span id="indicador-fila" class="indicador-fila" hidden>Sincronizando…</span>
           <span id="usuario-nome">—</span>
           <span id="usuario-perfil" class="usuario-perfil"></span>
           <button id="botao-sair" class="botao-sair" title="Sair">Sair</button>
@@ -518,7 +598,34 @@ body {
             </thead>
             <tbody id="tabela-usuarios-corpo"></tbody>
           </table>
+
+          <div class="config-cabecalho" style="margin-top:34px;">
+            <div>
+              <h2 class="config-titulo">Engenheiros e Responsáveis de Compras</h2>
+              <p class="config-subtitulo">Nomes disponíveis para selecionar no cadastro de Projetos (não precisam ter login no sistema).</p>
+            </div>
+          </div>
+
+          <div class="colunas-responsaveis">
+            <div class="bloco-responsavel">
+              <h3>Engenheiros responsáveis</h3>
+              <form id="form-engenheiro" class="form-inline-add">
+                <input type="text" id="novo-engenheiro" placeholder="Nome do engenheiro" required>
+                <button type="submit" class="botao-secundario">Adicionar</button>
+              </form>
+              <ul id="lista-engenheiros" class="lista-chips"></ul>
+            </div>
+            <div class="bloco-responsavel">
+              <h3>Responsáveis de compras</h3>
+              <form id="form-responsavel-compras" class="form-inline-add">
+                <input type="text" id="novo-responsavel-compras" placeholder="Nome do responsável" required>
+                <button type="submit" class="botao-secundario">Adicionar</button>
+              </form>
+              <ul id="lista-responsaveis-compras" class="lista-chips"></ul>
+            </div>
+          </div>
         </section>
+
 
         <section id="pagina-projetos" class="secao-pagina" hidden>
           <div class="config-cabecalho">
@@ -673,6 +780,65 @@ async function chamarApi(payload) {
   return resposta.json();
 }
 
+// ---------- Fila de requisições em segundo plano ----------
+// O usuário nunca espera a API responder: a ação entra na fila, o formulário
+// fecha na hora, e o resultado (sucesso ou erro) chega depois via toast.
+const filaRequisicoes = [];
+let processandoFila = false;
+let tarefasPendentes = 0;
+const indicadorFila = document.getElementById("indicador-fila");
+
+function atualizarIndicadorFila() {
+  indicadorFila.hidden = tarefasPendentes === 0;
+}
+
+function enfileirarRequisicao(payload) {
+  tarefasPendentes++;
+  atualizarIndicadorFila();
+  return new Promise((resolve) => {
+    filaRequisicoes.push({ payload, resolve });
+    processarFila();
+  });
+}
+
+async function processarFila() {
+  if (processandoFila) return;
+  processandoFila = true;
+  while (filaRequisicoes.length > 0) {
+    const item = filaRequisicoes.shift();
+    let resultado;
+    try {
+      resultado = await chamarApi(item.payload);
+    } catch (erro) {
+      resultado = { ok: false, erro: "Falha de conexão com o servidor." };
+    }
+    item.resolve(resultado);
+    tarefasPendentes--;
+    atualizarIndicadorFila();
+  }
+  processandoFila = false;
+}
+
+function obterToastContainer() {
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+function mostrarToast(mensagem, tipo = "sucesso") {
+  const container = obterToastContainer();
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${tipo}`;
+  toast.textContent = mensagem;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4200);
+}
+
 function mostrarErroLogin(mensagem) {
   loginErro.textContent = mensagem;
   loginErro.hidden = false;
@@ -742,6 +908,7 @@ function selecionarPagina(nomePagina) {
   } else if (nomePagina === "Configurações") {
     paginaConfiguracoes.hidden = false;
     carregarUsuarios();
+    carregarResponsaveis();
   } else if (nomePagina === "Projetos") {
     paginaProjetos.hidden = false;
     carregarProjetos();
@@ -795,7 +962,7 @@ function abrirFormUsuario(usuario) {
 botaoNovoUsuario.addEventListener("click", () => abrirFormUsuario(null));
 botaoCancelarUsuario.addEventListener("click", () => { formUsuario.hidden = true; });
 
-formUsuario.addEventListener("submit", async (evento) => {
+formUsuario.addEventListener("submit", (evento) => {
   evento.preventDefault();
   usuarioFormErro.hidden = true;
 
@@ -805,49 +972,64 @@ formUsuario.addEventListener("submit", async (evento) => {
     senha: document.getElementById("usr-senha").value,
     perfil: document.getElementById("usr-perfil").value
   };
+  const eraEdicao = idUsuarioEmEdicao;
 
-  try {
-    let resultado;
-    if (idUsuarioEmEdicao) {
-      resultado = await chamarApi({ action: "atualizarUsuario", token: sessaoToken, dados: { ...dados, idUsuario: idUsuarioEmEdicao } });
-    } else {
-      resultado = await chamarApi({ action: "criarUsuario", token: sessaoToken, dados });
-    }
+  // Fecha o formulário na hora — o salvamento acontece em segundo plano.
+  formUsuario.hidden = true;
 
+  const acao = eraEdicao ? "atualizarUsuario" : "criarUsuario";
+  const payload = eraEdicao ? { ...dados, idUsuario: eraEdicao } : dados;
+
+  enfileirarRequisicao({ action: acao, token: sessaoToken, dados: payload }).then((resultado) => {
     if (!resultado.ok) {
+      mostrarToast(`Não foi possível salvar "${dados.nome}": ${resultado.erro}`, "erro");
+      abrirFormUsuario(eraEdicao ? { ...dados, idUsuario: eraEdicao } : null);
       usuarioFormErro.textContent = resultado.erro;
       usuarioFormErro.hidden = false;
       return;
     }
-
-    formUsuario.hidden = true;
+    mostrarToast(`Usuário "${dados.nome}" salvo.`, "sucesso");
     carregarUsuarios();
-  } catch (erro) {
-    usuarioFormErro.textContent = "Não foi possível salvar. Tente novamente.";
-    usuarioFormErro.hidden = false;
-  }
+  });
 });
 
-async function alternarSituacao(usuario) {
+function alternarSituacao(usuario) {
   const novaSituacao = usuario.situacao === "Ativo" ? "Inativo" : "Ativo";
   const confirmacao = confirm(`Confirma alterar "${usuario.nome}" para ${novaSituacao}?`);
   if (!confirmacao) return;
 
-  const resultado = await chamarApi({
+  // Atualização otimista: muda o badge na hora, sem esperar a API.
+  const referencia = linhasUsuarios.get(usuario.idUsuario);
+  if (referencia) {
+    referencia.badge.textContent = novaSituacao;
+    referencia.badge.className = `badge-situacao ${novaSituacao === "Ativo" ? "ativo" : "inativo"}`;
+    referencia.botaoAlternar.textContent = novaSituacao === "Ativo" ? "Desativar" : "Ativar";
+  }
+  const situacaoAnterior = usuario.situacao;
+  usuario.situacao = novaSituacao;
+
+  enfileirarRequisicao({
     action: "alterarSituacaoUsuario",
     token: sessaoToken,
     dados: { idUsuario: usuario.idUsuario, novaSituacao }
+  }).then((resultado) => {
+    if (!resultado.ok) {
+      mostrarToast(`Não foi possível alterar "${usuario.nome}": ${resultado.erro}`, "erro");
+      usuario.situacao = situacaoAnterior;
+      if (referencia) {
+        referencia.badge.textContent = situacaoAnterior;
+        referencia.badge.className = `badge-situacao ${situacaoAnterior === "Ativo" ? "ativo" : "inativo"}`;
+        referencia.botaoAlternar.textContent = situacaoAnterior === "Ativo" ? "Desativar" : "Ativar";
+      }
+    }
   });
-
-  if (!resultado.ok) {
-    alert(resultado.erro);
-    return;
-  }
-  carregarUsuarios();
 }
+
+const linhasUsuarios = new Map();
 
 async function carregarUsuarios() {
   tabelaUsuariosCorpo.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
+  linhasUsuarios.clear();
 
   const resultado = await chamarApi({ action: "listarUsuarios", token: sessaoToken });
   if (!resultado.ok) {
@@ -875,9 +1057,11 @@ async function carregarUsuarios() {
       </td>
     `;
 
+    const botaoAlternar = linha.querySelector('[data-acao="alternar"]');
     linha.querySelector('[data-acao="editar"]').addEventListener("click", () => abrirFormUsuario(usuario));
-    linha.querySelector('[data-acao="alternar"]').addEventListener("click", () => alternarSituacao(usuario));
+    botaoAlternar.addEventListener("click", () => alternarSituacao(usuario));
 
+    linhasUsuarios.set(usuario.idUsuario, { tr: linha, badge: linha.querySelector(".badge-situacao"), botaoAlternar });
     tabelaUsuariosCorpo.appendChild(linha);
   });
 }
@@ -898,26 +1082,30 @@ function isoParaBr(dataIso) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-async function garantirListaUsuarios() {
+async function garantirListaResponsaveis() {
   if (usuariosParaSelecaoCarregados) return;
 
-  const resultado = await chamarApi({ action: "obterUsuariosParaSelecao", token: sessaoToken });
+  const resultado = await chamarApi({ action: "listarResponsaveis", token: sessaoToken });
   if (!resultado.ok) return;
 
-  [selectEngenheiro, selectResponsavelCompras].forEach((select) => {
-    resultado.usuarios.forEach((usuario) => {
-      const opcao = document.createElement("option");
-      opcao.value = usuario.idUsuario;
-      opcao.textContent = usuario.nome;
-      select.appendChild(opcao);
-    });
-  });
+  preencherSelectResponsaveis(selectEngenheiro, resultado.engenheiros);
+  preencherSelectResponsaveis(selectResponsavelCompras, resultado.responsaveisCompras);
   usuariosParaSelecaoCarregados = true;
+}
+
+function preencherSelectResponsaveis(select, itens) {
+  select.querySelectorAll("option:not([value=''])").forEach((op) => op.remove());
+  itens.filter((item) => item.ativo).forEach((item) => {
+    const opcao = document.createElement("option");
+    opcao.value = item.nome;
+    opcao.textContent = item.nome;
+    select.appendChild(opcao);
+  });
 }
 
 async function abrirFormProjeto(projeto) {
   projetoFormErro.hidden = true;
-  await garantirListaUsuarios();
+  await garantirListaResponsaveis();
 
   if (projeto) {
     idProjetoEmEdicao = projeto.idProjeto;
@@ -944,7 +1132,7 @@ async function abrirFormProjeto(projeto) {
 botaoNovoProjeto.addEventListener("click", () => abrirFormProjeto(null));
 botaoCancelarProjeto.addEventListener("click", () => { formProjeto.hidden = true; });
 
-formProjeto.addEventListener("submit", async (evento) => {
+formProjeto.addEventListener("submit", (evento) => {
   evento.preventDefault();
   projetoFormErro.hidden = true;
 
@@ -961,27 +1149,25 @@ formProjeto.addEventListener("submit", async (evento) => {
     status: document.getElementById("prj-status").value,
     observacoes: document.getElementById("prj-observacoes").value.trim()
   };
+  const eraEdicao = idProjetoEmEdicao;
 
-  try {
-    let resultado;
-    if (idProjetoEmEdicao) {
-      resultado = await chamarApi({ action: "atualizarProjeto", token: sessaoToken, dados: { ...dados, idProjeto: idProjetoEmEdicao } });
-    } else {
-      resultado = await chamarApi({ action: "criarProjeto", token: sessaoToken, dados });
-    }
+  // Fecha o formulário na hora — o salvamento acontece em segundo plano.
+  formProjeto.hidden = true;
 
+  const acao = eraEdicao ? "atualizarProjeto" : "criarProjeto";
+  const payload = eraEdicao ? { ...dados, idProjeto: eraEdicao } : dados;
+
+  enfileirarRequisicao({ action: acao, token: sessaoToken, dados: payload }).then((resultado) => {
     if (!resultado.ok) {
+      mostrarToast(`Não foi possível salvar "${dados.nome}": ${resultado.erro}`, "erro");
+      abrirFormProjeto(eraEdicao ? { ...dados, idProjeto: eraEdicao } : null);
       projetoFormErro.textContent = resultado.erro;
       projetoFormErro.hidden = false;
       return;
     }
-
-    formProjeto.hidden = true;
+    mostrarToast(`Projeto "${dados.nome}" salvo.`, "sucesso");
     carregarProjetos();
-  } catch (erro) {
-    projetoFormErro.textContent = "Não foi possível salvar. Tente novamente.";
-    projetoFormErro.hidden = false;
-  }
+  });
 });
 
 function formatarMoeda(valor) {
@@ -1012,7 +1198,7 @@ async function carregarProjetos() {
     linha.innerHTML = `
       <td>${projeto.nome}</td>
       <td>${projeto.cliente || "—"}</td>
-      <td>${projeto.responsavelComprasNome || "—"}</td>
+      <td>${projeto.responsavelCompras || "—"}</td>
       <td>${formatarMoeda(projeto.orcamentoTotal)}</td>
       <td><span class="badge-situacao ${classeBadge}">${projeto.status}</span></td>
       <td><button class="link-acao" data-acao="editar">Editar</button></td>
@@ -1022,6 +1208,84 @@ async function carregarProjetos() {
     tabelaProjetosCorpo.appendChild(linha);
   });
 }
+
+// ---------- Configurações > Engenheiros e Responsáveis de Compras ----------
+
+const listaEngenheirosEl = document.getElementById("lista-engenheiros");
+const listaResponsaveisComprasEl = document.getElementById("lista-responsaveis-compras");
+
+async function carregarResponsaveis() {
+  const resultado = await chamarApi({ action: "listarResponsaveis", token: sessaoToken });
+  if (!resultado.ok) return;
+
+  renderizarListaResponsaveis(listaEngenheirosEl, "Engenheiro", resultado.engenheiros);
+  renderizarListaResponsaveis(listaResponsaveisComprasEl, "ResponsavelCompras", resultado.responsaveisCompras);
+
+  // A lista de seleção do formulário de Projeto pode ter mudado — força recarregar da próxima vez.
+  usuariosParaSelecaoCarregados = false;
+}
+
+function renderizarListaResponsaveis(elementoLista, tipo, itens) {
+  elementoLista.innerHTML = "";
+  if (itens.length === 0) {
+    elementoLista.innerHTML = `<li>Nenhum nome cadastrado ainda.</li>`;
+    return;
+  }
+
+  itens.forEach((item) => {
+    const li = document.createElement("li");
+    if (!item.ativo) li.classList.add("item-inativo");
+    li.innerHTML = `
+      <span>${item.nome}</span>
+      <button type="button" class="link-acao" data-nome="${item.nome}">${item.ativo ? "Desativar" : "Ativar"}</button>
+    `;
+    li.querySelector("button").addEventListener("click", () => alternarResponsavel(tipo, item, elementoLista));
+    elementoLista.appendChild(li);
+  });
+}
+
+function alternarResponsavel(tipo, item, elementoLista) {
+  enfileirarRequisicao({ action: "alternarResponsavel", token: sessaoToken, tipo, nome: item.nome }).then((resultado) => {
+    if (!resultado.ok) {
+      mostrarToast(`Não foi possível alterar "${item.nome}": ${resultado.erro}`, "erro");
+    }
+    carregarResponsaveis();
+  });
+}
+
+document.getElementById("form-engenheiro").addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  const campo = document.getElementById("novo-engenheiro");
+  const nome = campo.value.trim();
+  if (!nome) return;
+  campo.value = "";
+
+  enfileirarRequisicao({ action: "criarResponsavel", token: sessaoToken, tipo: "Engenheiro", nome }).then((resultado) => {
+    if (!resultado.ok) {
+      mostrarToast(`Não foi possível adicionar "${nome}": ${resultado.erro}`, "erro");
+      return;
+    }
+    mostrarToast(`"${nome}" adicionado.`, "sucesso");
+    carregarResponsaveis();
+  });
+});
+
+document.getElementById("form-responsavel-compras").addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  const campo = document.getElementById("novo-responsavel-compras");
+  const nome = campo.value.trim();
+  if (!nome) return;
+  campo.value = "";
+
+  enfileirarRequisicao({ action: "criarResponsavel", token: sessaoToken, tipo: "ResponsavelCompras", nome }).then((resultado) => {
+    if (!resultado.ok) {
+      mostrarToast(`Não foi possível adicionar "${nome}": ${resultado.erro}`, "erro");
+      return;
+    }
+    mostrarToast(`"${nome}" adicionado.`, "sucesso");
+    carregarResponsaveis();
+  });
+});
 
 </script>
 </body>
