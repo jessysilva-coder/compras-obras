@@ -317,13 +317,14 @@ body {
 
 .campo { display: flex; flex-direction: column; margin-bottom: 12px; }
 .campo label { font-size: 12.5px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
-.campo input, .campo select {
+.campo input, .campo select, .campo textarea {
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13.5px;
   font-family: inherit;
 }
+.campo textarea { resize: vertical; }
 
 .form-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 
