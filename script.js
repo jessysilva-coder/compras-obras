@@ -36,6 +36,18 @@ const botaoCancelarUsuario = document.getElementById("botao-cancelar-usuario");
 const usuarioFormErro = document.getElementById("usuario-form-erro");
 let idUsuarioEmEdicao = null;
 
+const paginaProjetos = document.getElementById("pagina-projetos");
+const tabelaProjetosCorpo = document.getElementById("tabela-projetos-corpo");
+const formProjeto = document.getElementById("form-projeto");
+const formProjetoTitulo = document.getElementById("form-projeto-titulo");
+const botaoNovoProjeto = document.getElementById("botao-novo-projeto");
+const botaoCancelarProjeto = document.getElementById("botao-cancelar-projeto");
+const projetoFormErro = document.getElementById("projeto-form-erro");
+const selectEngenheiro = document.getElementById("prj-engenheiro");
+const selectResponsavelCompras = document.getElementById("prj-responsavel-compras");
+let idProjetoEmEdicao = null;
+let usuariosParaSelecaoCarregados = false;
+
 async function chamarApi(payload) {
   const resposta = await fetch(APP_URL, {
     method: "POST",
@@ -108,12 +120,16 @@ function selecionarPagina(nomePagina) {
   paginaInicio.hidden = true;
   paginaGenerica.hidden = true;
   paginaConfiguracoes.hidden = true;
+  paginaProjetos.hidden = true;
 
   if (nomePagina === "Início") {
     paginaInicio.hidden = false;
   } else if (nomePagina === "Configurações") {
     paginaConfiguracoes.hidden = false;
     carregarUsuarios();
+  } else if (nomePagina === "Projetos") {
+    paginaProjetos.hidden = false;
+    carregarProjetos();
   } else {
     paginaGenerica.hidden = false;
     textoPaginaGenerica.textContent = `A página "${nomePagina}" será construída em uma das próximas etapas.`;
@@ -252,5 +268,146 @@ async function carregarUsuarios() {
     linha.querySelector('[data-acao="alternar"]').addEventListener("click", () => alternarSituacao(usuario));
 
     tabelaUsuariosCorpo.appendChild(linha);
+  });
+}
+
+// ---------- Projetos ----------
+
+function brParaIso(dataBR) {
+  if (!dataBR) return "";
+  const partes = dataBR.split("/");
+  if (partes.length !== 3) return "";
+  return `${partes[2]}-${partes[1]}-${partes[0]}`;
+}
+
+function isoParaBr(dataIso) {
+  if (!dataIso) return "";
+  const partes = dataIso.split("-");
+  if (partes.length !== 3) return "";
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+async function garantirListaUsuarios() {
+  if (usuariosParaSelecaoCarregados) return;
+
+  const resultado = await chamarApi({ action: "obterUsuariosParaSelecao", token: sessaoToken });
+  if (!resultado.ok) return;
+
+  [selectEngenheiro, selectResponsavelCompras].forEach((select) => {
+    resultado.usuarios.forEach((usuario) => {
+      const opcao = document.createElement("option");
+      opcao.value = usuario.idUsuario;
+      opcao.textContent = usuario.nome;
+      select.appendChild(opcao);
+    });
+  });
+  usuariosParaSelecaoCarregados = true;
+}
+
+async function abrirFormProjeto(projeto) {
+  projetoFormErro.hidden = true;
+  await garantirListaUsuarios();
+
+  if (projeto) {
+    idProjetoEmEdicao = projeto.idProjeto;
+    formProjetoTitulo.textContent = `Editar projeto — ${projeto.nome}`;
+    document.getElementById("prj-nome").value = projeto.nome || "";
+    document.getElementById("prj-codigo").value = projeto.codigoInterno || "";
+    document.getElementById("prj-cliente").value = projeto.cliente || "";
+    document.getElementById("prj-endereco").value = projeto.endereco || "";
+    selectEngenheiro.value = projeto.engenheiro || "";
+    selectResponsavelCompras.value = projeto.responsavelCompras || "";
+    document.getElementById("prj-data-inicio").value = brParaIso(projeto.dataInicio);
+    document.getElementById("prj-previsao-termino").value = brParaIso(projeto.previsaoTermino);
+    document.getElementById("prj-orcamento").value = projeto.orcamentoTotal || "";
+    document.getElementById("prj-status").value = projeto.status || "Em andamento";
+    document.getElementById("prj-observacoes").value = projeto.observacoes || "";
+  } else {
+    idProjetoEmEdicao = null;
+    formProjetoTitulo.textContent = "Novo projeto";
+    formProjeto.reset();
+  }
+  formProjeto.hidden = false;
+}
+
+botaoNovoProjeto.addEventListener("click", () => abrirFormProjeto(null));
+botaoCancelarProjeto.addEventListener("click", () => { formProjeto.hidden = true; });
+
+formProjeto.addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+  projetoFormErro.hidden = true;
+
+  const dados = {
+    nome: document.getElementById("prj-nome").value.trim(),
+    codigoInterno: document.getElementById("prj-codigo").value.trim(),
+    cliente: document.getElementById("prj-cliente").value.trim(),
+    endereco: document.getElementById("prj-endereco").value.trim(),
+    engenheiro: selectEngenheiro.value,
+    responsavelCompras: selectResponsavelCompras.value,
+    dataInicio: isoParaBr(document.getElementById("prj-data-inicio").value),
+    previsaoTermino: isoParaBr(document.getElementById("prj-previsao-termino").value),
+    orcamentoTotal: document.getElementById("prj-orcamento").value,
+    status: document.getElementById("prj-status").value,
+    observacoes: document.getElementById("prj-observacoes").value.trim()
+  };
+
+  try {
+    let resultado;
+    if (idProjetoEmEdicao) {
+      resultado = await chamarApi({ action: "atualizarProjeto", token: sessaoToken, dados: { ...dados, idProjeto: idProjetoEmEdicao } });
+    } else {
+      resultado = await chamarApi({ action: "criarProjeto", token: sessaoToken, dados });
+    }
+
+    if (!resultado.ok) {
+      projetoFormErro.textContent = resultado.erro;
+      projetoFormErro.hidden = false;
+      return;
+    }
+
+    formProjeto.hidden = true;
+    carregarProjetos();
+  } catch (erro) {
+    projetoFormErro.textContent = "Não foi possível salvar. Tente novamente.";
+    projetoFormErro.hidden = false;
+  }
+});
+
+function formatarMoeda(valor) {
+  const numero = Number(valor);
+  if (!valor || isNaN(numero)) return "—";
+  return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+async function carregarProjetos() {
+  tabelaProjetosCorpo.innerHTML = `<tr><td colspan="6">Carregando...</td></tr>`;
+
+  const resultado = await chamarApi({ action: "listarProjetos", token: sessaoToken });
+  if (!resultado.ok) {
+    tabelaProjetosCorpo.innerHTML = `<tr><td colspan="6">${resultado.erro}</td></tr>`;
+    return;
+  }
+
+  if (resultado.projetos.length === 0) {
+    tabelaProjetosCorpo.innerHTML = `<tr><td colspan="6">Nenhum projeto cadastrado ainda.</td></tr>`;
+    return;
+  }
+
+  tabelaProjetosCorpo.innerHTML = "";
+  resultado.projetos.forEach((projeto) => {
+    const linha = document.createElement("tr");
+    const classeBadge = projeto.status === "Em andamento" ? "ativo" : "inativo";
+
+    linha.innerHTML = `
+      <td>${projeto.nome}</td>
+      <td>${projeto.cliente || "—"}</td>
+      <td>${projeto.responsavelComprasNome || "—"}</td>
+      <td>${formatarMoeda(projeto.orcamentoTotal)}</td>
+      <td><span class="badge-situacao ${classeBadge}">${projeto.status}</span></td>
+      <td><button class="link-acao" data-acao="editar">Editar</button></td>
+    `;
+
+    linha.querySelector('[data-acao="editar"]').addEventListener("click", () => abrirFormProjeto(projeto));
+    tabelaProjetosCorpo.appendChild(linha);
   });
 }
